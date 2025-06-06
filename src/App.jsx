@@ -12,7 +12,7 @@ import { useAuth } from "./context/AuthContext";
 export default function App() {
   const { tokenChecked, user } = useAuth();
 
-  if (!tokenChecked) return null; // Puedes agregar un spinner aquí
+  if (!tokenChecked) return null; 
 
   // Calcula la ruta de inicio según el rol del usuario
   const homePath = user?.role === "WAITER" ? "/mesas" : "/admin/usuarios";

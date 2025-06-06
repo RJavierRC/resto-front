@@ -14,32 +14,88 @@ export default function WaiterTablesPage() {
   const [closeModal, setCloseModal] = useState(null); // NUEVO
   const [summaryModal, setSummaryModal] = useState(null); // NUEVO
 
-  const load = async () => {
-    setLoading(true);
-    try { 
-      setTables(await getTables()); 
-    } catch (e) { 
-      toast.error(e.message); 
-    } finally { 
-      setLoading(false); 
-    }
-  };
+  // En la función load(), verifica la respuesta:
+const load = async () => {
+  setLoading(true);
+  try { 
+    const data = await getTables();
+    setTables(data.map(table => ({
+      id: table.id,
+      number: table.number,
+      status: table.status?.toUpperCase() || "CLOSED", // Normaliza
+      orderId: table.order?.id || table.orderId,
+      order: table.order || null
+    }))); 
+  } catch (e) { 
+    toast.error(e.message); 
+  } finally { 
+    setLoading(false); 
+  }
+};
 
   useEffect(() => { load(); }, []);
 
   const handleOpen = async (tableId) => {
     try {
+      // Verifica el estado actual de la mesa
+      const updatedTables = await getTables();
+      const table = tables.find(t => t.id === tableId);
+      if (table?.status !== "FREE") {
+        toast.warning("La mesa no está disponible para abrir");
+        return;
+      }
+  
       const res = await openTable(tableId);
-      toast.success("Mesa abierta");
+      
+      // Actualización optimizada del estado
+      setTables(prevTables => prevTables.map(table => 
+        table.id === tableId 
+          ? { 
+              ...table, 
+              status: "OCCUPIED", 
+              orderId: res.orderId,
+              order: res.order // Asegúrate que el backend devuelve esto
+            } 
+          : table
+      ));
+      
       setOrderModal(res.orderId);
-    } catch (e) { 
-      toast.error(e.message); 
+      toast.success("Mesa abierta correctamente");
+    } catch (e) {
+      console.error("Detalles completos del error:", e);
+      toast.error(`Error al abrir mesa: ${e.message}`);
     }
+
+    console.log("Mesa a abrir:", tables.find(t => t.id === tableId));
+    console.log("Respuesta API:", res);
   };
 
-  const handleCloseSuccess = () => {
+  const handleCloseSuccess = (tableId) => {
+    setTables(tables.map(t => 
+      t.id === tableId 
+        ? { ...t, status: "FREE", orderId: null, order: null } 
+        : t
+    ));
     setCloseModal(null);
-    load();
+    toast.success("Orden cerrada y mesa liberada");
+  };
+
+  const handleForceClose = async (tableId) => {
+    if (!confirm("¿Estás seguro de marcar esta mesa como libre?")) return;
+    
+    try {
+      // Opción 1: Solo frontend (comentado)
+      setTables(tables.map(t => 
+        t.id === tableId ? { ...t, status: "FREE" } : t
+      ));
+      
+      // Opción 2: Con backend (descomentar)
+      // await freeTable(tableId);
+      
+      toast.success("✅ Mesa liberada");
+    } catch (error) {
+      toast.error(`❌ Error: ${error.message}`);
+    }
   };
 
   return (
@@ -65,15 +121,21 @@ export default function WaiterTablesPage() {
       ) : (
         <div className="grid gap-4" style={{gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))"}}>
           {tables.map(t => (
-            <TableCard
-              key={t.id}
-              table={t}
-              onOpen={handleOpen}
-              onAddItem={(oid) => setOrderModal(oid)}
-              onClose={(oid) => setCloseModal(oid)} // MODIFICADO
-              onViewOrder={(oid) => setSummaryModal(oid)} // NUEVO
-            />
-          ))}
+        <TableCard
+          key={t.id}
+          table={t}
+          onOpen={handleOpen}
+          onAddItem={(oid) => setOrderModal(oid)}
+          onClose={(oid, tid) => {
+            if (oid) {
+              setCloseModal({ orderId: oid, tableId: tid });
+            } else {
+              handleForceClose(tid);
+            }
+          }}
+          onViewOrder={(oid) => setSummaryModal(oid)}
+        />
+      ))}
         </div>
       )}
 
@@ -87,9 +149,9 @@ export default function WaiterTablesPage() {
 
       {closeModal && (
         <CloseOrderModal
-          orderId={closeModal}
+          orderId={closeModal.orderId}
           onClose={() => setCloseModal(null)}
-          onSuccess={handleCloseSuccess}
+          onSuccess={() => handleCloseSuccess(closeModal.tableId)}
         />
       )}
 

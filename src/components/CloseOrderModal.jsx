@@ -10,14 +10,34 @@ export default function CloseOrderModal({ orderId, onClose, onSuccess }) {
   const handleClose = async () => {
     setLoading(true);
     try {
-      await closeOrder(orderId, tip, paymentType);
+      // Asegurar que tip sea número (incluso si es string vacío)
+      const numericTip = Number(tip) || 0;
+      
+      // Verificar orderId antes de enviar
+      if (!orderId) {
+        throw new Error("No se proporcionó ID de orden");
+      }
+
+      console.log("Enviando:", { 
+        orderId, 
+        tip: numericTip, 
+        paymentType 
+      });
+
+      await closeOrder(
+        orderId.toString(),  // Asegurar string
+        numericTip,         // Número garantizado
+        paymentType         // String ("CASH", "CARD", etc.)
+      );
+      
       toast.success("Orden cerrada exitosamente");
       onSuccess();
-      onClose();
     } catch (err) {
-      toast.error(`Error: ${err.message}`);
+      console.error("Error al cerrar orden:", err);
+      toast.error(`Error al cerrar orden: ${err.response?.data?.message || err.message}`);
     } finally {
       setLoading(false);
+      onClose();
     }
   };
 
