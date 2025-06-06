@@ -5,10 +5,10 @@ import classNames from "classnames";
 export default function NavBar() {
   const { user, logout } = useAuth();
   const active = ({ isActive }) => classNames("px-3 py-2 rounded",
-    isActive ? "bg-primary text-white" : "text-gray-700 hover:bg-gray-200");
+    isActive ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200");
   return (
     <nav className="flex items-center justify-between bg-white shadow px-6 h-14">
-      <Link to="/" className="text-xl font-bold text-primary">Restaurant REHHAB</Link>
+      <Link to="/" className="text-xl font-bold text-blue-600">Restaurant REHHAB</Link>
       {user && (
         <div className="flex gap-2 items-center">
           <NavLink to="/mesas" className={active}>Mesas</NavLink>
@@ -19,7 +19,7 @@ export default function NavBar() {
               <NavLink to="/admin/mesas" className={active}>Mesas (CRUD)</NavLink>
             </>
           )}
-          <button onClick={logout} className="ml-4 text-sm text-primary hover:underline">Salir</button>
+          <button onClick={logout} className="ml-4 text-sm text-blue-600 hover:underline">Salir</button>
         </div>
       )}
     </nav>
