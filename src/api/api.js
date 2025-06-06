@@ -42,6 +42,9 @@ export const searchProducts= (q)    => request(`/products/search?q=${encodeURICo
 export const resetTable = (id) =>
   request(`/waiter/tables/${id}/reset`, { method: "POST" });
 
+export const getOrder = (id) => request(`/waiter/orders/${id}`);
+export const deleteItem = (orderId, itemId) => 
+  request(`/waiter/orders/${orderId}/items/${itemId}`, {method: "DELETE"});
 
 /* CRUD genérico */
 const crudOf = (path) => ({

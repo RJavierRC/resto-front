@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
+import { getOrder, deleteItem } from "../api/api";
 
 export default function OrderSummaryModal({ orderId, onClose }) {
   const [order, setOrder] = useState(null);
@@ -9,34 +10,35 @@ export default function OrderSummaryModal({ orderId, onClose }) {
     loadOrderDetails();
   }, [orderId]);
 
- const loadOrderDetails = async () => {
-  try {
-    // Usar tu API existente - ajusta según tu estructura
-    const response = await fetch(`/api/orders/${orderId}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    });
+  const loadOrderDetails = async () => {
+    try {
+      setLoading(true);
+      const data = await getOrder(orderId);
+      console.log("🔍 Orden cargada:", data);
+      setOrder(data);
+    } catch (err) {
+      console.error('❌ Error loading order:', err);
+      toast.error(`Error al cargar orden: ${err.message}`);
+      // NO usar datos de ejemplo - mostrar error real
+      setOrder({ id: orderId, items: [], total: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId) => {
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
     
-    if (!response.ok) throw new Error('Error al cargar orden');
-    
-    const data = await response.json();
-    setOrder(data);
-  } catch (err) {
-    console.error('Error loading order:', err);
-    // Datos de ejemplo mientras arreglas la API
-    setOrder({
-      id: orderId,
-      items: [
-        { name: "Producto Ejemplo", quantity: 1, price: 10.50 },
-        { name: "Otro Producto", quantity: 2, price: 8.00 }
-      ]
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      console.log(`🗑️ Eliminando item ${itemId} de orden ${orderId}`);
+      const updatedOrder = await deleteItem(orderId, itemId);
+      setOrder(updatedOrder);
+      toast.success("Producto eliminado");
+    } catch (err) {
+      console.error('❌ Error deleting item:', err);
+      toast.error(`Error al eliminar: ${err.message}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -49,7 +51,7 @@ export default function OrderSummaryModal({ orderId, onClose }) {
     );
   }
 
-  const total = order?.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  const total = order?.total || 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4">
@@ -70,15 +72,24 @@ export default function OrderSummaryModal({ orderId, onClose }) {
         <div className="overflow-y-auto max-h-96">
           {order?.items?.length > 0 ? (
             <div className="divide-y divide-gray-200">
-              {order.items.map((item, index) => (
-                <div key={index} className="p-4 flex justify-between items-center hover:bg-gray-50">
+              {order.items.map((item) => (
+                <div key={item.id} className="p-4 flex justify-between items-center hover:bg-gray-50 group">
                   <div className="flex-1">
-                    <h3 className="font-medium text-gray-800">{item.name || `Producto ${item.productId}`}</h3>
+                    <h3 className="font-medium text-gray-800">{item.name}</h3>
                     <p className="text-sm text-gray-600">Cantidad: {item.quantity}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-800">${(item.price * item.quantity).toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">${item.price.toFixed(2)} c/u</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-medium text-gray-800">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">${item.price.toFixed(2)} c/u</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white p-1 rounded text-sm"
+                      title="Eliminar producto"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
               ))}
